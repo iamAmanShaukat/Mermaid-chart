@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mermaid Chart Visualizer</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        :root[data-theme="default"] {
+        :root {
             --bg-color: #f5f5f5;
             --surface-color: #ffffff;
             --text-color: #333333;
@@ -18,36 +19,30 @@
             --border-color: #ddd;
         }
 
-        :root[data-theme="dark"] {
+        [data-theme="dark"] {
             --bg-color: #1a1a1a;
             --surface-color: #2d2d2d;
             --text-color: #ffffff;
             --primary-color: #3b82f6;
             --primary-hover: #2563eb;
-            --secondary-color: #4b5563;
-            --secondary-hover: #374151;
             --border-color: #404040;
         }
 
-        :root[data-theme="forest"] {
+        [data-theme="forest"] {
             --bg-color: #1b2e1b;
             --surface-color: #2d4a2d;
             --text-color: #e0e7e0;
             --primary-color: #4ade80;
             --primary-hover: #22c55e;
-            --secondary-color: #527452;
-            --secondary-hover: #405940;
             --border-color: #3d5a3d;
         }
 
-        :root[data-theme="neutral"] {
+        [data-theme="neutral"] {
             --bg-color: #e5e5e5;
             --surface-color: #f3f3f3;
             --text-color: #262626;
             --primary-color: #737373;
             --primary-hover: #525252;
-            --secondary-color: #a3a3a3;
-            --secondary-hover: #858585;
             --border-color: #d4d4d4;
         }
 
@@ -70,7 +65,6 @@
             height: 100vh;
             padding: 20px;
             gap: 20px;
-            transition: all 0.3s ease;
         }
 
         .editor-section {
@@ -84,23 +78,17 @@
             width: 60%;
             background: var(--surface-color);
             border-radius: 8px;
-            padding: 20px;
+            padding: 0px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-        }
-
-        .fullscreen .preview-section {
-            width: 100%;
-        }
-
-        .fullscreen .editor-section {
-            display: none;
+            position: relative;
+            overflow: hidden; 
         }
 
         #editor {
             width: 100%;
-            height: calc(100% - 50px);
+            height: calc(100% - 120px);
             padding: 15px;
             border: none;
             border-radius: 8px;
@@ -113,13 +101,10 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        #editor:focus {
-            outline: 2px solid var(--primary-color);
-        }
-
         .button-group {
             display: flex;
             gap: 10px;
+            margin-bottom: 10px;
         }
 
         button {
@@ -145,6 +130,14 @@
             background: var(--secondary-hover);
         }
 
+        button.danger {
+            background: #dc3545;
+        }
+        button.danger:hover {
+            background: #bb2d3b;
+        }
+
+
         #preview {
             flex-grow: 1;
             overflow: auto;
@@ -153,12 +146,75 @@
             justify-content: center;
             padding: 20px;
             background: var(--surface-color);
+            position: relative; 
         }
 
         #preview svg {
-            max-width: 100%;
-            height: auto;
+        display: block;
+        min-width: 100%;
+        min-height: 100%;
+        transform: translate(0, 0); /* Ensure no positioning offset */
+        margin: -20px 0;
+    }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
         }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            color: #dc3545;
+            padding: 15px;
+            background: #ffe6e6;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+/*       Toggle full screen */
+
+        .preview-section:-webkit-full-screen {
+            width: 100% !important;
+            height: 100% !important;
+            background: var(--surface-color);
+            padding: 0px;
+        }
+
+        .preview-section:-moz-full-screen {
+            width: 100% !important;
+            height: 100% !important;
+            background: var(--surface-color);
+            padding: 0px;
+        }
+
+        .preview-section:fullscreen {
+            width: 100% !important;
+            height: 100% !important;
+            background: var(--surface-color);
+            padding: 0px;
+        }
+
 
         .theme-selector {
             padding: 8px;
@@ -169,19 +225,50 @@
             color: var(--text-color);
         }
 
-        .theme-selector option {
+        .prompt-input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
             background: var(--surface-color);
             color: var(--text-color);
+            resize: none;
+            overflow-y: auto;
+            min-height: 40px;
+            max-height: 150px;
+            transition: height 0.2s ease;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--surface-color);
         }
 
-        /* to ensure the preview div has the mermaid class for the download function */
-        .mermaid {
-            background: white;
+        .prompt-input:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: -1px;
+        }
+
+        /* Custom scrollbar styling */
+        .prompt-input::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .prompt-input::-webkit-scrollbar-track {
+            background: var(--surface-color);
+            border-radius: 6px;
+        }
+
+        .prompt-input::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 6px;
+        }
+
+        .prompt-input::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-hover);
         }
     </style>
 </head>
 <body>
-    <h1 style="text-align: center; color: theme;">Draw Chart</h1>
+    <h1 style="text-align: center; margin: 20px 0;">Draw Chart</h1>
 
     <div class="container" id="container">
         <div class="editor-section">
@@ -193,12 +280,19 @@
                     <option value="neutral">Neutral Theme</option>
                 </select>
                 <button onclick="renderChart()">Render</button>
+                <button onclick="generateChartFromPrompt()" class="secondary">Generate from AI</button>
+                <button onclick="clearEditor()" class="danger">Clear</button>
             </div>
+            <textarea 
+                id="aiPrompt" 
+                placeholder="Describe the chart you want to create..."
+                class="prompt-input"
+            ></textarea>
             <textarea id="editor" spellcheck="false" placeholder="Enter your Mermaid code here...">graph TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Debug]
-    D --> B</textarea>
+A[Start] --> B{Is it working?}
+B -->|Yes| C[Great!]
+B -->|No| D[Debug]
+D --> B</textarea>
         </div>
         <div class="preview-section">
             <div class="button-group">
@@ -206,70 +300,209 @@
                 <button onclick="downloadChart()" class="secondary">Download PNG</button>
             </div>
             <div id="preview" class="mermaid"></div>
+            <div id="loading" class="loading-overlay">
+                <div class="loading-spinner"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Initialize Mermaid with default configuration
+        const API_KEY = 'XXX';
+        const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+        const DEFAULT_PROMPT = `You are a Mermaid diagram code generator. Respond ONLY with the Mermaid code, without any explanation.`;
+
         let currentTheme = 'default';
-        
+        let debounceTimeout;
+
         function initializeMermaid(theme) {
             currentTheme = theme;
             mermaid.initialize({
-                startOnLoad: true,
+                startOnLoad: false,
                 theme: theme,
-                securityLevel: 'loose'
+                securityLevel: 'loose',
+                flowchart: { 
+                    diagramPadding: 40,
+                    useMaxWidth: false,
+                    htmlLabels: false
+                }
             });
-            // Update website theme
+
             document.documentElement.setAttribute('data-theme', theme);
         }
 
-        // Initial initialization
-        initializeMermaid('default');
-
-        // Initial render
-        renderChart();
+        document.addEventListener("DOMContentLoaded", function() {
+            initializeMermaid('default');
+            renderChart();
+        });
 
         async function renderChart() {
-            const code = document.getElementById('editor').value;
+            const code = document.getElementById('editor').value.trim();
             const preview = document.getElementById('preview');
             
-            // Clear previous chart
-            preview.innerHTML = '';
+            preview.innerHTML = '<div class="loading-message">Rendering...</div>';
             
             try {
                 const { svg } = await mermaid.render('mermaid-diagram', code);
                 preview.innerHTML = svg;
+                preview.scrollTo(0, 0);
             } catch (error) {
-                preview.innerHTML = `<div style="color: red;">Error: ${error.message}</div>`;
+                preview.innerHTML = `<div class="error-message">Error: ${error.message.replace(/^.*?:\s*/, '')}</div>`;
+                console.error('Mermaid Error:', error);
             }
         }
 
-        // Call render after initialization
+        // clear text area
+        function clearEditor() {
+            const editor = document.getElementById('editor');
+            const aiPrompt = document.getElementById('aiPrompt');
+            
+            editor.value = '';
+            aiPrompt.value = '';
+            localStorage.removeItem('mermaidCode'); // If using persistence
+            localStorage.removeItem('mermaidTheme');
+            renderChart(); // Clear the preview
+        }
+
+        async function generateChartFromPrompt() {
+            const prompt = document.getElementById('aiPrompt').value;
+            if (!prompt) return alert('Please enter a description');
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_ENDPOINT}?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            role: "user",
+                            parts: [{ text: `${DEFAULT_PROMPT}: ${prompt}` }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.4,
+                            topK: 40,
+                            topP: 0.95,
+                            maxOutputTokens: 8192,
+                            responseMimeType: "text/plain"
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                const mermaidCode = processApiResponse(data);
+                document.getElementById('editor').value = mermaidCode;
+                await renderChart();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Generation failed. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+
+        function processApiResponse(data) {
+            if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                throw new Error('Invalid API response');
+            }
+
+            let mermaidCode = data.candidates[0].content.parts[0].text;
+            
+            // Enhanced cleanup pattern
+            const codeBlockPattern = /```(?:mermaid)?\n([\s\S]*?)```/;
+            const match = mermaidCode.match(codeBlockPattern);
+            
+            // Extract code from code block if exists
+            if (match && match[1]) {
+                mermaidCode = match[1];
+            }
+
+            // Additional cleanup steps
+            return mermaidCode
+                .replace(/(^[^\S\r\n]*|[^\S\r\n]*$)/gm, '') // Clean indentation
+                .replace(/^[^\S\r\n]+/gm, '') // Remove leading whitespace
+                .replace(/\n\s*\n/g, '\n') // Remove empty lines
+                .trim();
+        }
+
+        // Save/Load functionality
+        function autoSave() {
+            localStorage.setItem('mermaidCode', editor.value);
+            localStorage.setItem('mermaidTheme', currentTheme);
+        }
+
+        function loadSaved() {
+            editor.value = localStorage.getItem('mermaidCode') || '';
+            const savedTheme = localStorage.getItem('mermaidTheme') || 'default';
+            themeSelector.value = savedTheme;
+            initializeMermaid(savedTheme);
+        }
+
+        // Add to DOMContentLoaded:
         document.addEventListener("DOMContentLoaded", function() {
-            setTimeout(renderChart, 10); // Small delay to ensure Mermaid is ready
+            loadSaved();
+            editor.addEventListener('input', autoSave);
         });
 
+
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
         function toggleFullscreen() {
-            const container = document.getElementById('container');
-            container.classList.toggle('fullscreen');
+            const previewSection = document.querySelector('.preview-section');
+            
+            if (!document.fullscreenElement) {
+                if (previewSection.requestFullscreen) {
+                    previewSection.requestFullscreen();
+                } else if (previewSection.mozRequestFullScreen) { /* Firefox */
+                    previewSection.mozRequestFullScreen();
+                } else if (previewSection.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                    previewSection.webkitRequestFullscreen();
+                } else if (previewSection.msRequestFullscreen) { /* IE/Edge */
+                    previewSection.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.mozCancelFullScreen) { /* Firefox */
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) { /* Chrome, Safari & Opera */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE/Edge */
+                    document.msExitFullscreen();
+                }
+            }
+        }
+
+        // Add event listener for fullscreen change
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        function handleFullscreenChange() {
+            const fullscreenButton = document.querySelector('[onclick="toggleFullscreen()"]');
+            if (document.fullscreenElement) {
+                fullscreenButton.textContent = 'Exit Fullscreen';
+            } else {
+                fullscreenButton.textContent = 'Toggle Fullscreen';
+            }
         }
 
         async function downloadChart() {
-            const chartContainer = document.querySelector(".mermaid");
+            const chartContainer = document.querySelector("#preview");
             if (!chartContainer) {
                 alert('No chart found to download');
                 return;
             }
+            
             try {
-                // html2canvas to capture the chart and convert it to a canvas
-                html2canvas(chartContainer, {
-                    scale: 3, // scale to capture a higher resolution (default is 1)
-                }).then(function(canvas) {
-                    //  download link for canvas image
+                html2canvas(chartContainer, { scale: 3 }).then(function(canvas) {
                     const link = document.createElement('a');
-                    link.href = canvas.toDataURL('image/png'); // Convert canvas to PNG image
-                    link.download = 'chart.png'; // Name for the downloaded file
+                    link.href = canvas.toDataURL('image/png');
+                    link.download = 'chart.png';
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -280,18 +513,45 @@
             }
         }
 
-        // Theme handling
         document.getElementById('themeSelector').addEventListener('change', function(e) {
             initializeMermaid(e.target.value);
             renderChart();
         });
 
-        // Auto-render on input with debounce
-        let timeout;
         document.getElementById('editor').addEventListener('input', function() {
-            clearTimeout(timeout);
-            timeout = setTimeout(renderChart, 500);
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(renderChart, 500);
         });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                renderChart();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                downloadChart();
+            }
+        });
+
+        function autoResize(element) {
+            element.style.height = 'auto';
+            element.style.height = element.scrollHeight + 'px';
+        }
+
+        const aiPrompt = document.getElementById('aiPrompt');
+
+        // Expand when typing or focused
+        aiPrompt.addEventListener('input', () => autoResize(aiPrompt));
+        aiPrompt.addEventListener('focus', () => autoResize(aiPrompt));
+
+        // Contract when blurred
+        aiPrompt.addEventListener('blur', function() {
+            this.style.height = '40px';
+            this.scrollTop = 0; // Reset scroll position
+        });
+
+        // Initialize with proper height
+        autoResize(aiPrompt);
     </script>
 </body>
 </html>
